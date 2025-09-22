@@ -17,4 +17,6 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: DEBUG
-        value: False
+        value: "False"
+      - key: DJANGO_SETTINGS_MODULE
+        value: "billing_system.settings"

@@ -1,0 +1,101 @@
+{% extends 'billing/base.html' %}
+
+{% block title %}{{ customer.name }} - Billing System{% endblock %}
+{% block page_title %}Customer Details{% endblock %}
+
+{% block page_actions %}
+<a href="{% url 'customer_list' %}" class="btn btn-secondary">
+    <i class="fas fa-arrow-left"></i> Back to Customers
+</a>
+<a href="/admin/billing/customer/{{ customer.id }}/change/" class="btn btn-primary">
+    <i class="fas fa-edit"></i> Edit Customer
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Customer Information -->
+    <div class="col-md-4">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Customer Information</h6>
+            </div>
+            <div class="card-body">
+                <h5 class="card-title">{{ customer.name }}</h5>
+                <p class="card-text">
+                    <strong>Email:</strong> {{ customer.email }}<br>
+                    {% if customer.phone %}
+                        <strong>Phone:</strong> {{ customer.phone }}<br>
+                    {% endif %}
+                    {% if customer.address %}
+                        <strong>Address:</strong><br>
+                        {{ customer.address|linebreaks }}
+                    {% endif %}
+                    <strong>Customer Since:</strong> {{ customer.created_at|date:"M d, Y" }}
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Customer Invoices -->
+    <div class="col-md-8">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">Invoices</h6>
+                <a href="{% url 'create_invoice' %}?customer={{ customer.id }}" class="btn btn-primary btn-sm">
+                    <i class="fas fa-plus"></i> Create Invoice
+                </a>
+            </div>
+            <div class="card-body">
+                {% if invoices %}
+                    <div class="table-responsive">
+                        <table class="table table-bordered" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th>Invoice #</th>
+                                    <th>Issue Date</th>
+                                    <th>Due Date</th>
+                                    <th>Status</th>
+                                    <th>Amount</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for invoice in invoices %}
+                                <tr>
+                                    <td>
+                                        <a href="{% url 'invoice_detail' invoice.id %}">{{ invoice.invoice_number }}</a>
+                                    </td>
+                                    <td>{{ invoice.issue_date }}</td>
+                                    <td>{{ invoice.due_date }}</td>
+                                    <td>
+                                        <span class="badge bg-{% if invoice.status == 'paid' %}success{% elif invoice.status == 'sent' %}info{% elif invoice.status == 'overdue' %}danger{% else %}secondary{% endif %} status-badge">
+                                            {{ invoice.get_status_display }}
+                                        </span>
+                                    </td>
+                                    <td>${{ invoice.total_amount|floatformat:2 }}</td>
+                                    <td>
+                                        <a href="{% url 'invoice_detail' invoice.id %}" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-eye"></i> View
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-file-invoice fa-2x text-muted mb-3"></i>
+                        <h6 class="text-muted">No invoices found</h6>
+                        <p class="text-muted">Create the first invoice for this customer.</p>
+                        <a href="{% url 'create_invoice' %}?customer={{ customer.id }}" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Create Invoice
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

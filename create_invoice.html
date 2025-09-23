@@ -1,0 +1,170 @@
+{% extends 'billing/base.html' %}
+
+{% block title %}Create Invoice - Billing System{% endblock %}
+{% block page_title %}Create New Invoice{% endblock %}
+
+{% block page_actions %}
+<a href="{% url 'invoice_list' %}" class="btn btn-secondary">
+    <i class="fas fa-arrow-left"></i> Back to Invoices
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Invoice Information</h6>
+    </div>
+    <div class="card-body">
+        <form method="post" id="invoiceForm">
+            {% csrf_token %}
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="customer" class="form-label">Customer *</label>
+                        <select class="form-select" id="customer" name="customer" required>
+                            <option value="">Select a customer</option>
+                            {% for customer in customers %}
+                            <option value="{{ customer.id }}">{{ customer.name }} ({{ customer.email }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="invoice_number" class="form-label">Invoice Number *</label>
+                        <input type="text" class="form-control" id="invoice_number" name="invoice_number" required>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="issue_date" class="form-label">Issue Date *</label>
+                        <input type="date" class="form-control" id="issue_date" name="issue_date" required>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="due_date" class="form-label">Due Date *</label>
+                        <input type="date" class="form-control" id="due_date" name="due_date" required>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="tax_rate" class="form-label">Tax Rate (%)</label>
+                        <input type="number" class="form-control" id="tax_rate" name="tax_rate" step="0.01" min="0" value="0">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Invoice Items -->
+            <div class="mb-4">
+                <h6 class="mb-3">Invoice Items</h6>
+                <div id="invoice-items">
+                    <div class="row invoice-item mb-2">
+                        <div class="col-md-5">
+                            <input type="text" class="form-control" name="description" placeholder="Description" required>
+                        </div>
+                        <div class="col-md-2">
+                            <input type="number" class="form-control quantity" name="quantity" placeholder="Qty" step="0.01" min="0.01" required>
+                        </div>
+                        <div class="col-md-2">
+                            <input type="number" class="form-control unit-price" name="unit_price" placeholder="Unit Price" step="0.01" min="0" required>
+                        </div>
+                        <div class="col-md-2">
+                            <input type="text" class="form-control total-price" placeholder="Total" readonly>
+                        </div>
+                        <div class="col-md-1">
+                            <button type="button" class="btn btn-danger btn-sm remove-item" style="display: none;">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm" id="add-item">
+                    <i class="fas fa-plus"></i> Add Item
+                </button>
+            </div>
+
+            <div class="mb-3">
+                <label for="notes" class="form-label">Notes</label>
+                <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
+            </div>
+
+            <div class="text-end">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Create Invoice
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Set default dates
+    const today = new Date().toISOString().split('T')[0];
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + 30);
+    const dueDateStr = dueDate.toISOString().split('T')[0];
+    
+    document.getElementById('issue_date').value = today;
+    document.getElementById('due_date').value = dueDateStr;
+    
+    // Generate invoice number
+    const invoiceNumber = 'INV-' + Date.now();
+    document.getElementById('invoice_number').value = invoiceNumber;
+    
+    // Add item functionality
+    document.getElementById('add-item').addEventListener('click', function() {
+        const itemsContainer = document.getElementById('invoice-items');
+        const newItem = itemsContainer.querySelector('.invoice-item').cloneNode(true);
+        
+        // Clear values
+        newItem.querySelectorAll('input').forEach(input => {
+            if (!input.readOnly) input.value = '';
+        });
+        
+        // Show remove button
+        newItem.querySelector('.remove-item').style.display = 'block';
+        
+        itemsContainer.appendChild(newItem);
+        updateRemoveButtons();
+    });
+    
+    // Remove item functionality
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.remove-item')) {
+            e.target.closest('.invoice-item').remove();
+            updateRemoveButtons();
+        }
+    });
+    
+    // Calculate totals
+    document.addEventListener('input', function(e) {
+        if (e.target.classList.contains('quantity') || e.target.classList.contains('unit-price')) {
+            const row = e.target.closest('.invoice-item');
+            const quantity = parseFloat(row.querySelector('.quantity').value) || 0;
+            const unitPrice = parseFloat(row.querySelector('.unit-price').value) || 0;
+            const total = quantity * unitPrice;
+            row.querySelector('.total-price').value = total.toFixed(2);
+        }
+    });
+    
+    function updateRemoveButtons() {
+        const items = document.querySelectorAll('.invoice-item');
+        items.forEach((item, index) => {
+            const removeBtn = item.querySelector('.remove-item');
+            if (items.length > 1) {
+                removeBtn.style.display = 'block';
+            } else {
+                removeBtn.style.display = 'none';
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
